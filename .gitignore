@@ -4,15 +4,8 @@ __pycache__/
 *$py.class
 
 # Game ISOs and Disc Images
-isos/*.iso
-isos/*.bin
-isos/*.cue
-isos/*.img
-isos/*.mdf
-isos/*.nrg
-isos/*.zip
-isos/*.7z
-isos/*.rar
+isos/*
+!isos/.gitkeep
 
 # PS4 Packages
 pkgs/*.pkg
@@ -31,6 +24,7 @@ tools/*.rar
 tools/*.exe
 tools/PS2-FPKG/
 tools/ps2-fpkg/
+tools/PS-Classics-fPKG-Builder/
 
 # Generated json files except .gitkeep
 json/*.json

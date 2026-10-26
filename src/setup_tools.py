@@ -25,6 +25,10 @@ TOOLS_DIR = os.path.join(BASE_DIR, 'tools')
 FPKGI_URL = "https://github.com/ItsJokerZz/FPKGi/releases/download/v1.10.0/FPKGi_v1.10.0-release.pkg"
 FPKGI_FILENAME = "FPKGi_v1.10.0-release.pkg"
 
+BUILDER_URL = "https://github.com/SvenGDK/PS-Classics-fPKG-Builder/releases/download/v1/PS.Classics.fPKG.Builder.v1.Windows.7z"
+BUILDER_FILENAME = "PS.Classics.fPKG.Builder.v1.Windows.7z"
+BUILDER_DIR_NAME = "PS-Classics-fPKG-Builder"
+
 CONVERSION_GUIDE = """================================================================================
 GUIA PRÁTICO: COMO CONVERTER ISOS DE PS2 EM PKGS DE PS4 (PS2-FPKG)
 ================================================================================
@@ -121,6 +125,35 @@ def download_file_with_progress(url, dest_path):
             os.remove(dest_path)
         return False
 
+def extract_archive(archive_path, extract_dir):
+    import shutil
+    import subprocess
+    os.makedirs(extract_dir, exist_ok=True)
+    print(f"[*] Descompactando {os.path.basename(archive_path)} para {extract_dir}...")
+    
+    tar_bin = shutil.which("tar.exe") or "tar.exe"
+    try:
+        cmd = [tar_bin, "-xf", archive_path, "-C", extract_dir]
+        ret = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if ret.returncode == 0:
+            print("[✓] Descompactado com sucesso via tar.exe!")
+            return True
+    except Exception as e:
+        print(f"[!] tar.exe falhou: {e}")
+
+    winrar = r"C:\Program Files\WinRAR\WinRAR.exe"
+    if os.path.isfile(winrar):
+        try:
+            cmd = [winrar, "x", "-ibck", "-y", archive_path, extract_dir + "\\"]
+            ret = subprocess.run(cmd)
+            if ret.returncode == 0:
+                print("[✓] Descompactado com sucesso via WinRAR!")
+                return True
+        except Exception as e:
+            print(f"[!] WinRAR falhou: {e}")
+            
+    return False
+
 def main():
     os.makedirs(TOOLS_DIR, exist_ok=True)
     
@@ -140,6 +173,27 @@ def main():
             print("[!] Não foi possível baixar automaticamente o PKG. Você pode baixá-lo manualmente em:")
             print(f"    {FPKGI_URL}")
             print(f"    e colocá-lo na pasta: {TOOLS_DIR}")
+
+    # 3. Baixa e extrai PS-Classics-fPKG-Builder (emuladores e ferramentas orbis-pub-cmd, etc.)
+    builder_dir = os.path.join(TOOLS_DIR, BUILDER_DIR_NAME)
+    if os.path.isdir(builder_dir) and any(os.scandir(builder_dir)):
+        print(f"[✓] Ferramenta {BUILDER_DIR_NAME} já existe em {builder_dir}.")
+    else:
+        builder_archive = os.path.join(TOOLS_DIR, BUILDER_FILENAME)
+        if not (os.path.isfile(builder_archive) and os.path.getsize(builder_archive) > 10 * 1024 * 1024):
+            print(f"[*] Baixando emulador base e ferramentas de empacotamento PS2-on-PS4...")
+            download_file_with_progress(BUILDER_URL, builder_archive)
+
+        if os.path.isfile(builder_archive) and os.path.getsize(builder_archive) > 10 * 1024 * 1024:
+            extract_ok = extract_archive(builder_archive, builder_dir)
+            if extract_ok:
+                try:
+                    os.remove(builder_archive)
+                    print(f"[*] Arquivo temporário {BUILDER_FILENAME} removido após extração.")
+                except Exception:
+                    pass
+            else:
+                print(f"[!] Falha na extração de {builder_archive}.")
 
     print("\n" + "=" * 65)
     print("Ferramentas configuradas com sucesso!")

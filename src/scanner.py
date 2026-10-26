@@ -90,6 +90,46 @@ def region_from_serial(serial):
         return REGION_MAP.get(prefix, 'USA')
     return 'USA'
 
+_PS2_TITLES_DB = None
+
+def load_ps2ids(base_dir=None):
+    """Carrega a base oficial de títulos de PS2 (ps2ids.txt)."""
+    global _PS2_TITLES_DB
+    if _PS2_TITLES_DB is not None:
+        return _PS2_TITLES_DB
+        
+    _PS2_TITLES_DB = {}
+    if base_dir is None:
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        
+    candidates = [
+        os.path.join(base_dir, 'tools', 'PS-Classics-fPKG-Builder', 'PS Classics fPKG Builder v1', 'Tools', 'ps2ids.txt'),
+        os.path.join(base_dir, 'tools', 'ps2ids.txt'),
+    ]
+    for p in candidates:
+        if os.path.isfile(p):
+            try:
+                with open(p, 'r', encoding='utf-8', errors='ignore') as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or ';' not in line:
+                            continue
+                        parts = line.split(';', 1)
+                        clean_ser = re.sub(r'[^A-Za-z0-9]', '', parts[0]).upper()
+                        _PS2_TITLES_DB[clean_ser] = parts[1].strip()
+                break
+            except Exception:
+                pass
+    return _PS2_TITLES_DB
+
+def get_official_title(serial, base_dir=None):
+    """Busca o nome limpo e oficial do jogo pelo serial."""
+    if not serial:
+        return None
+    db = load_ps2ids(base_dir)
+    clean_ser = re.sub(r'[^A-Za-z0-9]', '', serial).upper()
+    return db.get(clean_ser)
+
 def clean_title_from_filename(filename):
     """Gera um nome legível a partir do nome de arquivo."""
     name = Path(filename).stem
@@ -189,7 +229,13 @@ def parse_iso(iso_path):
     if not serial:
         serial = normalize_serial(os.path.basename(iso_path))
         
-    title = volume_label if volume_label else clean_title_from_filename(os.path.basename(iso_path))
+    official = get_official_title(serial)
+    if official:
+        title = official
+    elif volume_label:
+        title = volume_label
+    else:
+        title = clean_title_from_filename(os.path.basename(iso_path))
     region = region_from_serial(serial)
     
     return {
@@ -297,9 +343,12 @@ def parse_pkg(pkg_path):
         
     if not ps2_serial:
         ps2_serial = normalize_serial(filename)
-        
+
+    official = get_official_title(ps2_serial) if ps2_serial else None
     if not title:
-        title = clean_title_from_filename(filename)
+        title = official if official else clean_title_from_filename(filename)
+    elif official and (title.upper().startswith(('SLUS', 'SLES', 'SCUS', 'SCES', 'CUSA')) or 'SOMETHING WENT FRONG' in title.upper()):
+        title = official
         
     region = region_from_serial(ps2_serial) if ps2_serial else "USA"
     
@@ -417,11 +466,17 @@ def scan_library(base_dir=None, config=None):
                     
                     # Checa se já foi convertido para PKG
                     converted = False
+                    clean_iso_ser = re.sub(r'[^A-Za-z0-9]', '', iso_meta.get('serial') or '').upper()
                     for p in pkgs_found:
                         if iso_meta.get('serial') and p.get('ps2_serial') == iso_meta['serial']:
                             converted = True
                             break
-                        if p.get('name') and iso_meta.get('title') and p['name'].lower() == iso_meta['title'].lower():
+                        clean_pkg_ser = re.sub(r'[^A-Za-z0-9]', '', p.get('ps2_serial') or '').upper()
+                        clean_pkg_tid = re.sub(r'[^A-Za-z0-9]', '', p.get('title_id') or '').upper()
+                        if clean_iso_ser and (clean_iso_ser == clean_pkg_ser or clean_iso_ser == clean_pkg_tid):
+                            converted = True
+                            break
+                        if p.get('name') and iso_meta.get('title') and p['name'].strip().lower() == iso_meta['title'].strip().lower():
                             converted = True
                             break
                     iso_meta['converted'] = converted

@@ -16,6 +16,8 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from ftplib import FTP
 from pathlib import Path
 import io
+import threading
+import urllib.request
 
 # Suporte seguro a UTF-8 em consoles Windows
 if sys.platform == 'win32':
@@ -83,19 +85,18 @@ def get_fpkgi_config_content(server_ip, server_port):
     """Gera o conteúdo do arquivo /user/data/FPKGi/config.json compatível com FPKGi v1.10.0+."""
     ps2_url = f"http://{server_ip}:{server_port}/json/PS2.json"
     return json.dumps({
-        "FILTERS": {
-            "REGIONS": {
-                "ASIA": True,
-                "EUR": True,
-                "JAP": True,
-                "USA": True,
-                "UNK": True
+        "FILTERING": {
+            "CONTENT": "ps2",
+            "SORT": {
+                "type": "name",
+                "ascending": True
             },
-            "HOMEBREW": True
-        },
-        "SORTING": {
-            "FIELD": "NAME",
-            "ASCENDING": True
+            "REGIONS": [
+                "USA",
+                "Europe",
+                "Japan",
+                "Asia"
+            ]
         },
         "PREFERENCES": {
             "APPLICATION": {
@@ -119,15 +120,6 @@ def get_fpkgi_config_content(server_ip, server_port):
                 "THEMES": None
             },
             "CUSTOM_BACKGROUND_PATH": None
-        },
-        "populateViaWeb": True,
-        "CONTENT_URLS": {
-            "GAMES": "",
-            "UPDATES": "",
-            "DLC": "",
-            "PSX": "",
-            "PS2": ps2_url,
-            "CUSTOM": ""
         }
     }, indent=2)
 
@@ -163,7 +155,8 @@ def generate_dashboard_html(host_ip, port, config, library_data):
               <td><span class="badge badge-serial">{p.get('ps2_serial', '-')}</span></td>
               <td><span class="badge badge-region">{p.get('region', 'USA')}</span></td>
               <td>{format_size(p.get('size', 0))}</td>
-              <td>
+              <td style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button onclick="installViaRpi('{download_url}')" class="btn btn-sm btn-primary" title="Instalar no PS4 via Remote Package Installer">📲 Enviar p/ PS4 (RPI)</button>
                 <a href="{download_url}" class="btn btn-sm btn-outline" download>Baixar PKG</a>
               </td>
             </tr>
@@ -190,6 +183,8 @@ def generate_dashboard_html(host_ip, port, config, library_data):
                 
             status_badge = '<span class="badge badge-success">Convertido</span>' if i.get('converted') else '<span class="badge badge-warning">Pendente Conversão</span>'
 
+            action_btn = f'<button onclick="convertSingleIso(\'{urllib.parse.quote(i["filename"])}\')" class="btn btn-sm btn-success" style="margin-left: 6px;">⚙️ Converter</button>' if not i.get('converted') else ''
+
             isos_rows += f"""
             <tr>
               <td class="col-cover">{cover_img}</td>
@@ -200,7 +195,7 @@ def generate_dashboard_html(host_ip, port, config, library_data):
               <td><span class="badge badge-serial">{i.get('serial', 'Desconhecido')}</span></td>
               <td><span class="badge badge-region">{i.get('region', 'USA')}</span></td>
               <td>{format_size(i.get('size', 0))}</td>
-              <td>{status_badge}</td>
+              <td>{status_badge}{action_btn}</td>
             </tr>
             """
     else:
@@ -517,6 +512,51 @@ def generate_dashboard_html(host_ip, port, config, library_data):
       </div>
     </div>
 
+    <!-- Grid 2: RPI & Downloader -->
+    <div class="grid-2">
+      <!-- Card: Baixar + Converter Jogo do RomsGames.net -->
+      <div class="card">
+        <div class="card-title">
+          <span>🌐 Baixar + Converter Jogo do RomsGames.net</span>
+        </div>
+        <p style="font-size: 0.825rem; color: var(--text-muted); margin-bottom: 12px;">
+          Cole um link do <strong>romsgames.net</strong> ou nome do jogo para download e conversão automática para .pkg.
+        </p>
+        <div style="display: flex; gap: 10px;">
+          <input type="text" id="rom_input" class="form-control" placeholder="Ex: https://www.romsgames.net/playstation-2-rom-burnout-3-takedown/ ou Burnout 3">
+          <button onclick="downloadAndConvert()" class="btn btn-primary" id="btn-dl" style="white-space: nowrap;">
+            <span>🚀</span> Baixar + Converter
+          </button>
+        </div>
+        <div style="margin-top: 10px; display: flex; gap: 10px;">
+          <button onclick="convertAllPending()" class="btn btn-outline btn-sm" id="btn-convert-all" style="flex: 1;">
+            <span>⚙️</span> Converter Todas as ISOs Pendentes
+          </button>
+        </div>
+        <div id="dl-alert" style="display: none; padding: 10px 14px; border-radius: 6px; font-size: 0.85rem; margin-top: 12px;"></div>
+      </div>
+
+      <!-- Card: Instalar FPKGi via RPI Direto -->
+      <div class="card">
+        <div class="card-title">
+          <span>📲 Instalação RPI Direta no PS4</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Porta 12800</span>
+        </div>
+        <p style="font-size: 0.825rem; color: var(--text-muted); margin-bottom: 12px;">
+          Com o <strong>Remote Package Installer</strong> aberto no PS4, instale o FPKGi v1.10.0 ou qualquer jogo sem precisar de pendrive USB!
+        </p>
+        <div style="display: flex; gap: 10px; margin-top: 8px;">
+          <button onclick="installFpkgiRpi()" class="btn btn-success" style="flex: 1;" id="btn-fpkgi-rpi">
+            <span>📲</span> Instalar FPKGi via RPI (Sem Pendrive)
+          </button>
+          <a href="/tools/FPKGi_v1.10.0-release.pkg" class="btn btn-outline" download>
+            <span>💾</span> Baixar PKG
+          </a>
+        </div>
+        <div id="rpi-alert" style="display: none; padding: 10px 14px; border-radius: 6px; font-size: 0.85rem; margin-top: 12px;"></div>
+      </div>
+    </div>
+
     <!-- Tabela: PKGs Prontos -->
     <div class="card">
       <div class="card-title">
@@ -639,6 +679,128 @@ def generate_dashboard_html(host_ip, port, config, library_data):
         alertBox.innerHTML = '<strong>Erro de rede:</strong> ' + err;
       }});
     }}
+
+    function installViaRpi(pkgRelUrl) {{
+      const ip = document.getElementById('ps4_ip').value.trim();
+      if (!ip) {{
+        alert('Por favor, digite o IP do PS4 no campo "IP do PS4" acima.');
+        document.getElementById('ps4_ip').focus();
+        return;
+      }}
+      const baseOrigin = "http://{host_ip}:{port}";
+      const fullUrl = pkgRelUrl.startsWith('http') ? pkgRelUrl : (baseOrigin + pkgRelUrl);
+      const alertBox = document.getElementById('rpi-alert') || document.getElementById('ftp-alert');
+      alertBox.className = 'alert-info';
+      alertBox.style.display = 'block';
+      alertBox.innerHTML = 'Enviando comando RPI para o PS4 (' + ip + ':12800)...';
+
+      fetch('/api/rpi-install', {{
+        method: 'POST',
+        headers: {{ 'Content-Type': 'application/json' }},
+        body: JSON.stringify({{ ps4_ip: ip, pkg_url: fullUrl }})
+      }})
+      .then(r => r.json())
+      .then(data => {{
+        if (data.status === 'success' || data.success) {{
+          alertBox.className = 'alert-success';
+          alertBox.innerHTML = '<strong>Sucesso RPI!</strong> Jogo enviado para instalação no PS4! Verifique as Notificações/Downloads no PS4.';
+        }} else {{
+          alertBox.className = 'alert-danger';
+          alertBox.innerHTML = '<strong>Falha no RPI:</strong> ' + (data.error || data.message || 'Verifique se o Remote Package Installer está aberto na tela do PS4.');
+        }}
+      }})
+      .catch(err => {{
+        alertBox.className = 'alert-danger';
+        alertBox.innerHTML = '<strong>Erro de conexão:</strong> ' + err;
+      }});
+    }}
+
+    function installFpkgiRpi() {{
+      installViaRpi('/tools/FPKGi_v1.10.0-release.pkg');
+    }}
+
+    function convertAllPending() {{
+      const btn = document.getElementById('btn-convert-all');
+      const alertBox = document.getElementById('dl-alert');
+      btn.disabled = true;
+      btn.innerText = '⚙️ Convertendo...';
+      alertBox.className = 'alert-info';
+      alertBox.style.display = 'block';
+      alertBox.innerText = 'Conversão de ISOs iniciada em segundo plano. Aguarde alguns instantes e atualize o catálogo.';
+
+      fetch('/api/convert-isos', {{ method: 'POST' }})
+        .then(r => r.json())
+        .then(data => {{
+          btn.disabled = false;
+          btn.innerText = '⚙️ Converter Todas as ISOs Pendentes';
+          alertBox.className = 'alert-success';
+          alertBox.innerText = data.message || 'Conversão concluída!';
+          setTimeout(() => window.location.reload(), 2000);
+        }})
+        .catch(err => {{
+          btn.disabled = false;
+          btn.innerText = '⚙️ Converter Todas as ISOs Pendentes';
+          alertBox.className = 'alert-danger';
+          alertBox.innerText = 'Erro: ' + err;
+        }});
+    }}
+
+    function convertSingleIso(filename) {{
+      const alertBox = document.getElementById('dl-alert');
+      alertBox.className = 'alert-info';
+      alertBox.style.display = 'block';
+      alertBox.innerText = 'Convertendo ' + decodeURIComponent(filename) + '...';
+
+      fetch('/api/convert-isos', {{
+        method: 'POST',
+        headers: {{ 'Content-Type': 'application/json' }},
+        body: JSON.stringify({{ filename: decodeURIComponent(filename) }})
+      }})
+      .then(r => r.json())
+      .then(data => {{
+        alertBox.className = 'alert-success';
+        alertBox.innerText = data.message || 'Conversão concluída!';
+        setTimeout(() => window.location.reload(), 1500);
+      }})
+      .catch(err => {{
+        alertBox.className = 'alert-danger';
+        alertBox.innerText = 'Erro: ' + err;
+      }});
+    }}
+
+    function downloadAndConvert() {{
+      const input = document.getElementById('rom_input').value.trim();
+      const alertBox = document.getElementById('dl-alert');
+      const btn = document.getElementById('btn-dl');
+      if (!input) {{
+        alert('Digite o link do romsgames.net ou nome do jogo.');
+        return;
+      }}
+      btn.disabled = true;
+      btn.innerText = 'Iniciando...';
+      alertBox.className = 'alert-info';
+      alertBox.style.display = 'block';
+      alertBox.innerText = 'Download e conversão iniciados em background! Acompanhe o progresso no console ou aguarde.';
+
+      fetch('/api/download-game', {{
+        method: 'POST',
+        headers: {{ 'Content-Type': 'application/json' }},
+        body: JSON.stringify({{ query_or_url: input }})
+      }})
+      .then(r => r.json())
+      .then(data => {{
+        btn.disabled = false;
+        btn.innerText = '🚀 Baixar + Converter';
+        alertBox.className = 'alert-success';
+        alertBox.innerText = data.message;
+      }})
+      .catch(err => {{
+        btn.disabled = false;
+        btn.innerText = '🚀 Baixar + Converter';
+        alertBox.className = 'alert-danger';
+        alertBox.innerText = 'Erro: ' + err;
+      }});
+    }}
   </script>
 </body>
 </html>
@@ -680,7 +842,12 @@ class FPKGiRequestHandler(BaseHTTPRequestHandler):
             self.handle_file_request(send_body=True)
             return
 
-        # 6. Status API (/api/status)
+        # 6. Servir Ferramentas e FPKGi (/tools/<filename>)
+        if path.startswith('/tools/'):
+            self.handle_file_request(send_body=True)
+            return
+
+        # 7. Status API (/api/status)
         if path == '/api/status':
             self.send_json_response(200, {
                 "status": "online",
@@ -732,6 +899,144 @@ class FPKGiRequestHandler(BaseHTTPRequestHandler):
             host_ip = self.get_client_viewed_host()
             success, msg = self.upload_config_to_ps4(ps4_ip, ps4_port, host_ip, self.server.server_port)
             self.send_json_response(200 if success else 500, {"success": success, "message": msg})
+            return
+
+        # 3. Instalação via Remote Package Installer (RPI) (/api/rpi-install)
+        if path == '/api/rpi-install':
+            length = int(self.headers.get('Content-Length', 0))
+            body_bytes = self.rfile.read(length) if length > 0 else b'{}'
+            try:
+                data = json.loads(body_bytes.decode('utf-8'))
+            except Exception:
+                data = {}
+
+            cfg = load_config()
+            ps4_ip = (data.get('ps4_ip') or cfg.get('ps4_ip') or '').strip()
+            pkg_url = data.get('pkg_url', '').strip()
+
+            if not ps4_ip:
+                self.send_json_response(400, {"status": "fail", "error": "IP do PS4 não informado."})
+                return
+
+            if not pkg_url:
+                self.send_json_response(400, {"status": "fail", "error": "URL do PKG não informada."})
+                return
+
+            # Garante que nunca enviamos localhost/127.0.0.1 para o PS4 buscar
+            lan_ip = self.get_client_viewed_host()
+            server_port = self.server.server_port
+            if pkg_url.startswith('/'):
+                pkg_url = f"http://{lan_ip}:{server_port}{pkg_url}"
+            else:
+                pkg_url = pkg_url.replace('http://localhost:', f'http://{lan_ip}:').replace('http://127.0.0.1:', f'http://{lan_ip}:')
+
+            if ps4_ip != cfg.get('ps4_ip'):
+                cfg['ps4_ip'] = ps4_ip
+                save_config(cfg)
+
+            rpi_endpoint = f"http://{ps4_ip}:12800/api/install"
+            payload = json.dumps({"type": "direct", "packages": [pkg_url]}).encode('utf-8')
+            rpi_req = urllib.request.Request(rpi_endpoint, data=payload, headers={'Content-Type': 'application/json'})
+            try:
+                with urllib.request.urlopen(rpi_req, timeout=5) as rpi_resp:
+                    resp_body = rpi_resp.read().decode('utf-8', errors='ignore')
+                    try:
+                        resp_json = json.loads(resp_body)
+                    except Exception:
+                        resp_json = {"status": "success", "raw": resp_body}
+                    self.send_json_response(200, resp_json)
+            except Exception as e:
+                self.send_json_response(200, {
+                    "status": "fail",
+                    "error": f"Não foi possível conectar ao PS4 em {ps4_ip}:12800 ({str(e)}). Certifique-se de que o Remote Package Installer está aberto na tela do PS4!"
+                })
+            return
+
+        # 4. Progresso do RPI (/api/rpi-progress)
+        if path == '/api/rpi-progress':
+            length = int(self.headers.get('Content-Length', 0))
+            body_bytes = self.rfile.read(length) if length > 0 else b'{}'
+            try:
+                data = json.loads(body_bytes.decode('utf-8'))
+            except Exception:
+                data = {}
+            ps4_ip = data.get('ps4_ip', '').strip()
+            task_id = data.get('task_id', 0)
+            rpi_endpoint = f"http://{ps4_ip}:12800/api/get_task_progress"
+            payload = json.dumps({"task_id": task_id}).encode('utf-8')
+            rpi_req = urllib.request.Request(rpi_endpoint, data=payload, headers={'Content-Type': 'application/json'})
+            try:
+                with urllib.request.urlopen(rpi_req, timeout=5) as rpi_resp:
+                    self.send_json_response(200, json.loads(rpi_resp.read().decode('utf-8')))
+            except Exception as e:
+                self.send_json_response(500, {"error": str(e)})
+            return
+
+        # 5. Conversão de ISOs (/api/convert-isos)
+        if path == '/api/convert-isos':
+            length = int(self.headers.get('Content-Length', 0))
+            body_bytes = self.rfile.read(length) if length > 0 else b'{}'
+            try:
+                data = json.loads(body_bytes.decode('utf-8'))
+            except Exception:
+                data = {}
+            target_file = data.get('filename')
+
+            def do_conversion():
+                try:
+                    from convert_iso_to_pkg import convert_all_pending_isos, convert_single_game
+                    if target_file:
+                        convert_single_game(os.path.join(BASE_DIR, 'isos', target_file))
+                    else:
+                        convert_all_pending_isos()
+                except Exception as e:
+                    print(f"[!] Erro na conversão em background: {e}")
+
+            threading.Thread(target=do_conversion, daemon=True).start()
+            self.send_json_response(200, {
+                "success": True,
+                "message": "Conversão iniciada com sucesso em segundo plano!"
+            })
+            return
+
+        # 6. Baixar e Converter Jogo (/api/download-game)
+        if path == '/api/download-game':
+            length = int(self.headers.get('Content-Length', 0))
+            body_bytes = self.rfile.read(length) if length > 0 else b'{}'
+            try:
+                data = json.loads(body_bytes.decode('utf-8'))
+            except Exception:
+                data = {}
+            q = data.get('query_or_url', '').strip()
+            if not q:
+                self.send_json_response(400, {"success": False, "message": "Termo ou URL não informado."})
+                return
+
+            def do_dl():
+                try:
+                    from download_roms import process_game
+                    if q.startswith('http'):
+                        game_dict = {
+                            "name": Path(urllib.parse.urlparse(q).path.strip('/')).name,
+                            "url": q,
+                            "media_id": None
+                        }
+                    else:
+                        slug = q.lower().replace(' ', '-')
+                        game_dict = {
+                            "name": q,
+                            "url": f"https://www.romsgames.net/playstation-2-rom-{slug}/",
+                            "media_id": None
+                        }
+                    process_game(game_dict)
+                except Exception as e:
+                    print(f"[!] Erro no download do jogo: {e}")
+
+            threading.Thread(target=do_dl, daemon=True).start()
+            self.send_json_response(200, {
+                "success": True,
+                "message": f'Download e conversão de "{q}" iniciados em segundo plano!'
+            })
             return
 
         self.send_error(404, "Not Found")
@@ -855,6 +1160,10 @@ class FPKGiRequestHandler(BaseHTTPRequestHandler):
         elif decoded_path.startswith('/covers/'):
             rel_name = decoded_path[len('/covers/'):].lstrip('/\\')
             file_dir = os.path.abspath(os.path.join(BASE_DIR, cfg.get('covers_dir', './covers')))
+            file_path = os.path.join(file_dir, rel_name)
+        elif decoded_path.startswith('/tools/'):
+            rel_name = decoded_path[len('/tools/'):].lstrip('/\\')
+            file_dir = os.path.abspath(os.path.join(BASE_DIR, 'tools'))
             file_path = os.path.join(file_dir, rel_name)
         else:
             self.send_error(404, "Not Found")

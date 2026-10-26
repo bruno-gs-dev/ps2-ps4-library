@@ -4,7 +4,7 @@
   "pkgs_dir": "./pkgs",
   "covers_dir": "./covers",
   "json_dir": "./json",
-  "ps4_ip": "",
+  "ps4_ip": "192.168.0.15",
   "ps4_ftp_port": 2121,
   "auto_download_covers": true
 }

@@ -42,6 +42,7 @@ E:\PS2-PS4\
 │
 ├── 1_baixar_ferramentas.bat     # Baixa o FPKGi.pkg oficial e cria instruções
 ├── 2_iniciar_servidor.bat       # Inicia o servidor e abre o Dashboard no navegador
+├── 3_baixar_jogos.bat           # Baixa jogos de PS2 do romsgames.net automaticamente
 ├── config.json                  # Configurações do servidor e IP do PS4 (caminhos relativos)
 ├── README.md                    # Este guia completo em Português
 ├── .gitignore                   # Ignora ISOs/PKGs pesados mantendo a estrutura limpa
@@ -55,7 +56,8 @@ E:\PS2-PS4\
 └── src/
     ├── scanner.py               # Analisador de ISO/PKG e gerador de JSON
     ├── server.py                # Servidor HTTP Threading com suporte a Range 206 e Dashboard
-    └── setup_tools.py           # Script auxiliar de download de ferramentas
+    ├── setup_tools.py           # Script auxiliar de download de ferramentas
+    └── download_roms.py         # Downloader automático de ROMs do romsgames.net com extração .7z
 ```
 
 ---

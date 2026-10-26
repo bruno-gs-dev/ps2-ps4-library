@@ -1,0 +1,17 @@
+============================================================
+COMO USAR (PASSO A PASSO RAPIDO)
+============================================================
+
+--- CONFIGURACAO INICIAL (SO NA 1a VEZ) ---
+
+1 - Clique duas vezes em "1_baixar_ferramentas.bat" (se ainda nao baixou).
+2 - Clique duas vezes em "2_iniciar_servidor.bat" (vai abrir o painel no navegador).
+3 - Ligue o PS4 com GoldHEN ativo, abra o app Remote Package Installer (RPI) no PS4, digite o IP do PS4 no painel do PC e clique em "Instalar FPKGi via RPI (Sem Pendrive)".
+4 - Ative o FTP do GoldHEN no PS4 e, no painel do PC, clique em "Enviar config.json ao PS4 via FTP".
+
+--- NO DIA A DIA (ADICIONAR E JOGAR) ---
+
+1 - Para baixar um jogo novo: abra o painel do servidor (ou rode "3_baixar_jogos.bat") e cole o link do jogo do site romsgames.net/roms/playstation-2/ (ele baixa, extrai a ISO e ja converte para .PKG sozinho).
+2 - Se voce ja tiver uma .ISO na pasta "isos\": clique em "4_converter_isos_em_pkg.bat" para transformar em .PKG na pasta "pkgs\".
+3 - Para jogar no PS4: mantenha o "2_iniciar_servidor.bat" aberto no PC, abra o app FPKGi no PS4, escolha o jogo na lista com capa e aperte X para baixar e instalar.
+============================================================

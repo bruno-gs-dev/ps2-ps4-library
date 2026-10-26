@@ -242,6 +242,31 @@ def run_tests():
             assert rescan_data.get('pkgs_count') >= 1
         print("  [✓] Servidor HTTP: POST /api/rescan respondeu 200 OK com contagem de jogos.")
 
+        # GET /tools/FPKGi_v1.10.0-release.pkg com Range
+        fpkgi_file = os.path.join(BASE_DIR, 'tools', 'FPKGi_v1.10.0-release.pkg')
+        if os.path.exists(fpkgi_file):
+            fpkgi_size = os.path.getsize(fpkgi_file)
+            req_tools = urllib.request.Request(f"{base_url}/tools/FPKGi_v1.10.0-release.pkg")
+            req_tools.add_header('Range', 'bytes=0-99')
+            with urllib.request.urlopen(req_tools) as resp:
+                assert resp.status == 206
+                assert resp.headers.get('Content-Range') == f"bytes 0-99/{fpkgi_size}"
+                assert len(resp.read()) == 100
+            print("  [✓] Servidor HTTP: /tools/ com 206 Partial Content operacional.")
+
+        # POST /api/rpi-install (teste sem IP real deve retornar erro tratado)
+        req_rpi = urllib.request.Request(
+            f"{base_url}/api/rpi-install",
+            data=json.dumps({"ps4_ip": "127.0.0.1", "pkg_url": f"{base_url}/pkgs/Test_Game.pkg"}).encode('utf-8'),
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+        with urllib.request.urlopen(req_rpi) as resp:
+            assert resp.status == 200
+            rpi_data = json.loads(resp.read().decode('utf-8'))
+            assert "status" in rpi_data
+        print("  [✓] Servidor HTTP: POST /api/rpi-install respondeu com tratamento de erro.")
+
         # Desliga servidor de teste
         httpd.shutdown()
         httpd.server_close()
