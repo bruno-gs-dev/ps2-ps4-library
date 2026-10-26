@@ -1,0 +1,46 @@
+================================================================================
+GUIA PRÁTICO: COMO CONVERTER ISOS DE PS2 EM PKGS DE PS4 (PS2-FPKG)
+================================================================================
+
+Para jogar seus jogos de PS2 no PS4 com jailbreak (GoldHEN), você precisa
+empacotar a ISO do PS2 em um instalador .pkg usando a ferramenta PS2-FPKG.
+
+--------------------------------------------------------------------------------
+1. BAIXAR O PS2-FPKG NO SEU COMPUTADOR
+--------------------------------------------------------------------------------
+O PS2-FPKG é o programa oficial da comunidade para Windows:
+- Repositório / Releases: https://github.com/GDX-Tools/PS2-FPKG/releases
+- Baixe a versão mais recente (ex: PS2-FPKG v0.7 ou superior) e extraia na pasta
+  deste projeto em: `E:\PS2-PS4\tools\PS2-FPKG\` ou onde preferir.
+
+--------------------------------------------------------------------------------
+2. PASSO A PASSO DA CONVERSÃO
+--------------------------------------------------------------------------------
+1. Abra o executável `PS2-FPKG.exe`.
+2. No campo "Disc 1", clique em "Browse" e selecione a sua ISO de PS2
+   (que pode estar na pasta `E:\PS2-PS4\isos\`).
+3. O PS2-FPKG detectará automaticamente:
+   - O Title ID / Serial do PS2 (ex: SLUS-20062).
+   - O Game Title (Nome do Jogo).
+4. No campo "Emulation settings / Template":
+   - Escolha o template de compatibilidade recomendado ou mantenha o padrão
+     (ex: Jak v2, Okami, Star Wars Racer Revenge, etc.).
+   - O programa já inclui correções de widescreen, 60 FPS e LUA configs testadas.
+5. Personalização de Capa e Ícone:
+   - Se desejar, adicione o `icon0.png` (512x512) e `pic1.png` (1920x1080)
+     ou use as capas automáticas baixadas em `E:\PS2-PS4\covers\`.
+6. Clique no botão "Create fPKG".
+7. Escolha onde salvar o arquivo final `.pkg`:
+   👉 Salve diretamente na pasta:
+      `E:\PS2-PS4\pkgs\`
+
+--------------------------------------------------------------------------------
+3. DISPONIBILIZAR NO PS4 VIA FPKGi
+--------------------------------------------------------------------------------
+Assim que o `.pkg` for gerado na pasta `pkgs/`:
+1. Abra o painel do servidor no PC ou clique no botão:
+   "Atualizar Catálogo / Escanear Pastas".
+2. O servidor identificará o novo jogo e atualizará o arquivo `json/PS2.json`.
+3. Abra o aplicativo **FPKGi** no seu PS4.
+4. O novo jogo de PS2 aparecerá na lista pronto para download e instalação direta!
+================================================================================

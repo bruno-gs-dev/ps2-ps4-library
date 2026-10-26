@@ -1,0 +1,44 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Game ISOs and Disc Images
+isos/*.iso
+isos/*.bin
+isos/*.cue
+isos/*.img
+isos/*.mdf
+isos/*.nrg
+isos/*.zip
+isos/*.7z
+isos/*.rar
+
+# PS4 Packages
+pkgs/*.pkg
+
+# Cover images
+covers/*.jpg
+covers/*.jpeg
+covers/*.png
+covers/*.webp
+
+# Tools, executables and archives
+tools/*.pkg
+tools/*.zip
+tools/*.7z
+tools/*.rar
+tools/*.exe
+tools/PS2-FPKG/
+tools/ps2-fpkg/
+
+# Generated json files except .gitkeep
+json/*.json
+
+# Keep placeholder files in directories
+!*/.gitkeep
+
+# Local user/system files
+Thumbs.db
+.DS_Store
+*.log
